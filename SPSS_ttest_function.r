@@ -21,12 +21,15 @@ SPSS_ttest_flextable <- function(data, group, value, group_labels = NULL, digits
   means <- tapply(data[[value]], data[[group]], mean, na.rm=TRUE)
   sds   <- tapply(data[[value]], data[[group]], sd, na.rm=TRUE)
   ns    <- tapply(data[[value]], data[[group]], function(x) sum(!is.na(x)))
+  df_name <- deparse(substitute(value))
+  cleaned_name <- gsub("\"", "", df_name)
+  
   
   # t-test: both equal var & unequal var
   t_eq   <- t.test(data[[value]] ~ data[[group]], var.equal = TRUE)
   t_uneq <- t.test(data[[value]] ~ data[[group]], var.equal = FALSE)
 #imma explore how to setup the flextable
-  sample.dataframe <- data.frame(BlankCol = c("Scores" #should be referenced to one of the inputs when building the function
+  sample.dataframe <- data.frame(BlankCol = c(cleaned_name
                                             ,""),Grouping = names(means), 
                                N = as.numeric(ns), 
                                Mean = round(as.numeric(means), digits),
@@ -59,3 +62,33 @@ SPSS_ttest_flextable <- function(data, group, value, group_labels = NULL, digits
 }
 
 ## Now i need to draft the second table
+# Output skeleton is a 2x9 table with the following:
+
+df_2 <- data.frame(
+  blankcol1 = c("Scores", ""),
+  blankcol2 = c("Equal Variances assumed", "Equal variances not assumed"),
+  `F` = c("Fvalue", "" ),
+  Sig = c("Levene's p", ""),
+  `t` = c("tscore=","tscore!="),
+  df = c("df1", "df2"),
+  `Sig. (2-tailed)` =c("pvalue1", "pvalue2"),
+  `Mean Difference` = c('meandiff','meandiff'),
+  `Std. Error Difference` = c('std1','std2'),
+  `95% Confidence Lower` = c('cint1', 'cint2'),
+  `95% Confidence Upper` = c('cup1','cup2')
+)
+
+#start the intial flextable2
+ft2 <- flextable(df_2)
+
+ft2 <- add_header_row(ft2,  
+                      colwidths = c(2, 2, 7),
+                      values = c("","Levene's Test for Equality of Variance","t-test for Equality of Means")
+)
+ft2 <- align(ft2, align = "center" , part = "header")
+ft2 <- set_header_labels(ft2, blankcol1 = '')
+ft2 <- set_header_labels(ft2, blankcol2 = '')
+ft2 <- set_header_labels(ft2, X95..Confidence.Lower = "95% Confidence Lower")
+ft2 <- set_header_labels(ft2, X95..Confidence.Upper = "95% Confidence Upper")
+ft2<- border_inner_h(ft2,border = fp_border(color = "transparent"), part = "header")
+ft2
