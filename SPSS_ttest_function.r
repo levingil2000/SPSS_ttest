@@ -8,6 +8,9 @@ library(broom)    # for tidy outputs
 library(knitr)    # for tables
 library(flextable)
 library(dplyr)
+library(officer)
+library(magrittr)
+library(htmltools)
 
 SPSS_ttest_flextable <- function(data, group, value, group_labels = NULL, digits = 5) {
   # Ensure group is factor and relabel if needed
@@ -35,7 +38,8 @@ SPSS_ttest_flextable <- function(data, group, value, group_labels = NULL, digits
                                N = as.numeric(ns), 
                                Mean = round(as.numeric(means), digits),
                                `Std. Deviation` = round(as.numeric(sds), digits), 
-                               `Std Error Mean` = `Std. Deviation`/sqrt(N))
+                               `Std Error Mean` = round(as.numeric(sds), digits)/as.numeric(ns),
+                               check.names = FALSE)
 
 
   ft <- flextable(sample.dataframe)
@@ -45,19 +49,19 @@ SPSS_ttest_flextable <- function(data, group, value, group_labels = NULL, digits
 
 #Then shade columns 1 and 2 and add a border line
 # to add border i'll use the officer library
-  library(officer)
+  
   small_border <- fp_border(color = "lightgray", width = 1)
   ft <- border_inner_h(ft, part = "body", border = fp_border(color = "gray", width = 1))
   ft <- border_inner_v(ft, part = "body", border = small_border)
   ft <- bg(ft, i = 1:nrow(sample.dataframe), j = 1:2, bg = "lightgray", part = "body")
 #Modify the fonts to courier new
 # Header: Times New Roman, regular
-  ft <- font(ft, part = "header", fontname = "Arial Narrow")
+  ft <- font(ft, part = "header", fontname = "Arial")
   ft <- bold(ft, part = "header", bold = FALSE)
   ft <- fontsize(ft, part = "header", size = 11)
 
 # Body: Courier New
-  ft <- font(ft, part = "body", fontname = "Arial Narrow")
+  ft <- font(ft, part = "body", fontname = "Arial")
   ft <- fontsize(ft, part = "body", size = 11)
 # Build df2
   df_2 <- data.frame(
@@ -87,5 +91,21 @@ SPSS_ttest_flextable <- function(data, group, value, group_labels = NULL, digits
   ft2 <- set_header_labels(ft2, X95..Confidence.Lower = "95% Confidence Lower")
   ft2 <- set_header_labels(ft2, X95..Confidence.Upper = "95% Confidence Upper")
   ft2<- border_inner_h(ft2,border = fp_border(color = "transparent"), part = "header")
+  ft2 <- border_inner_h(ft2, border = fp_border(color = "grey"), part = "body")
+  ft2 <- border_inner_v(ft2, border = fp_border(color = "grey"), part = "body")
+  ft2 <- border(ft2, j=1, border.right = fp_border(color = "transparent"), part = "body")
+  ft2 <- bg(ft2, j=1:2, bg = "lightgray", part = "body" )
   
+  #Combining the tables
+  doc <- read_docx()
+  landscape_section <- prop_section(
+    page_size = page_size(orient = "landscape")
+  )
+  doc <- doc %>% 
+    body_add_flextable(value = ft) %>%
+    body_add_par("", style = "Normal") %>%
+    body_add_flextable(value = ft2) %>%
+    body_end_section_landscape()
+  print(doc, target = "output.docx")
+  shell.exec("output.docx")
 }
